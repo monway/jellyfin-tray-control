@@ -1,0 +1,5 @@
+jellyfin-tray-control (1.0.0) unstable; urgency=medium
+
+  * Initial release of the Jellyfin system tray controller.
+
+ -- Dylan <loki@hell>  Sun, 06 Sep 2026 17:29:00 -0400

@@ -1,0 +1,85 @@
+#!/usr/bin/env python3
+import subprocess
+import webbrowser
+import gi
+
+gi.require_version('Gtk', '3.0')
+gi.require_version('AyatanaAppIndicator3', '0.1')
+from gi.repository import Gtk, AyatanaAppIndicator3, GLib
+
+FLATPAK_SERVER_ID = "org.jellyfin.JellyfinServer"
+WEB_URL = "http://localhost:8096"
+
+class JellyfinTray:
+    def __init__(self):
+        self.indicator = AyatanaAppIndicator3.Indicator.new(
+            "jellyfin-tray-control",
+            "video-display",
+            AyatanaAppIndicator3.IndicatorCategory.APPLICATION_STATUS
+        )
+        self.indicator.set_status(AyatanaAppIndicator3.IndicatorStatus.ACTIVE)
+        
+        self.menu = Gtk.Menu()
+
+        self.status_item = Gtk.MenuItem(label="Status: Checking...")
+        self.status_item.set_sensitive(False)
+        self.menu.append(self.status_item)
+
+        self.start_item = Gtk.MenuItem(label="Start Jellyfin Server")
+        self.start_item.connect("activate", self.start_service)
+        self.menu.append(self.start_item)
+
+        self.stop_item = Gtk.MenuItem(label="Stop Jellyfin Server")
+        self.stop_item.connect("activate", self.stop_service)
+        self.menu.append(self.stop_item)
+
+        self.web_item = Gtk.MenuItem(label="Open Web UI")
+        self.web_item.connect("activate", self.open_web)
+        self.menu.append(self.web_item)
+
+        self.quit_item = Gtk.MenuItem(label="Quit Tray")
+        self.quit_item.connect("activate", self.quit_app)
+        self.menu.append(self.quit_item)
+
+        self.menu.show_all()
+        self.indicator.set_menu(self.menu)
+
+        self.update_status()
+        GLib.timeout_add_seconds(3, self.update_status)
+
+    def is_running(self):
+        res = subprocess.run(["flatpak", "ps"], capture_output=True, text=True)
+        return FLATPAK_SERVER_ID in res.stdout
+
+    def update_status(self):
+        running = self.is_running()
+        if running:
+            self.status_item.set_label("Status: RUNNING")
+            self.start_item.set_sensitive(False)
+            self.stop_item.set_sensitive(True)
+            self.indicator.set_icon_full("video-display", "Jellyfin Running")
+        else:
+            self.status_item.set_label("Status: STOPPED")
+            self.start_item.set_sensitive(True)
+            self.stop_item.set_sensitive(False)
+            self.indicator.set_icon_full("video-display-symbolic", "Jellyfin Stopped")
+        return True
+
+    def start_service(self, widget):
+        if not self.is_running():
+            subprocess.Popen(["flatpak", "run", FLATPAK_SERVER_ID])
+        self.update_status()
+
+    def stop_service(self, widget):
+        subprocess.run(["flatpak", "kill", FLATPAK_SERVER_ID])
+        self.update_status()
+
+    def open_web(self, widget):
+        webbrowser.open(WEB_URL)
+
+    def quit_app(self, widget):
+        Gtk.main_quit()
+
+if __name__ == "__main__":
+    app = JellyfinTray()
+    Gtk.main()

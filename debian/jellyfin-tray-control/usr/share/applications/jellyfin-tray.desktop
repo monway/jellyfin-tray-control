@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Jellyfin Control Tray
+Comment=Manage Jellyfin server from the panel
+Exec=/usr/bin/jellyfin-tray
+Icon=video-display
+Terminal=false
+Type=Application
+Categories=AudioVideo;Video;

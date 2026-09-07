@@ -1,0 +1,11 @@
+Package: jellyfin-tray-control
+Version: 1.0.0
+Architecture: all
+Maintainer: Dylan <loki@hell>
+Installed-Size: 20
+Depends: python3, python3-gi, gir1.2-ayatanaappindicator3-0.1, gir1.2-gtk-3.0
+Section: utils
+Priority: optional
+Description: System tray controller for Jellyfin Media Server
+ Lightweight AppIndicator status icon and menu controller for managing the
+ local Jellyfin systemd service.
