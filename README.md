@@ -11,6 +11,5 @@ A lightweight system tray indicator for managing Jellyfin Server on Debian and L
 ## Dependencies (Debian/Ubuntu)
 ```bash
 sudo apt install python3-gi python3-gi-cairo gir1.2-gtk-3.0 gir1.2-ayatanaappindicator3-0.1
-sudo cp jellyfin-tray-control.sudoers /etc/sudoers.d/jellyfin-tray-control
-sudo chmod 0440 /etc/sudoers.d/jellyfin-tray-control
+sudo install -m 0644 org.jellyfin.service.policy /usr/share/polkit-1/actions/
 sudo install -m 755 jellyfin-tray /usr/local/bin/jellyfin-tray
