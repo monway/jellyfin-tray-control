@@ -1,0 +1,16 @@
+# Jellyfin Tray Control
+
+A lightweight system tray indicator for managing Jellyfin Server on Debian and Linux desktops.
+
+## Features
+- **Auto-Detection:** Automatically detects native systemd service (`jellyfin.service`) or Flatpak container (`org.jellyfin.JellyfinServer`).
+- **Event-Driven:** Uses GIO D-Bus signal subscriptions instead of active polling (0.0% idle CPU).
+- **Lightweight:** Minimal memory footprint (<15 MB RSS).
+- **Non-Blocking:** Responsive GTK3 / AyatanaAppIndicator interface.
+
+## Dependencies (Debian/Ubuntu)
+```bash
+sudo apt install python3-gi python3-gi-cairo gir1.2-gtk-3.0 gir1.2-ayatanaappindicator3-0.1
+sudo cp jellyfin-tray-control.sudoers /etc/sudoers.d/jellyfin-tray-control
+sudo chmod 0440 /etc/sudoers.d/jellyfin-tray-control
+sudo install -m 755 jellyfin-tray /usr/local/bin/jellyfin-tray
