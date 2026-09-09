@@ -13,15 +13,31 @@ A lightweight system tray indicator for managing Jellyfin Server on Debian and L
 - **No Sudoers Modification:** Avoids `/etc/sudoers.d/` overrides, preserving standard Linux privilege separation and safe user-space execution.
 
 ## Installation & Dependencies (Debian/Ubuntu)
+
+Install system dependencies:
 ```bash
 sudo apt install python3-gi python3-gi-cairo gir1.2-gtk-3.0 gir1.2-ayatanaappindicator3-0.1
+```
+
+Install binary, Polkit policy, and desktop launcher:
+```bash
 sudo install -m 0644 org.jellyfin.service.policy /usr/share/polkit-1/actions/
 sudo install -m 755 jellyfin-tray /usr/local/bin/jellyfin-tray
+sudo install -m 644 jellyfin-tray.desktop /usr/share/applications/
+```
+
+*(Optional)* Enable automatic startup on desktop login:
+```bash
+mkdir -p ~/.config/autostart
+cp jellyfin-tray.desktop ~/.config/autostart/
 ```
 
 ## Uninstallation
 ```bash
-sudo rm -f /usr/local/bin/jellyfin-tray /usr/share/polkit-1/actions/org.jellyfin.service.policy
+sudo rm -f /usr/local/bin/jellyfin-tray \
+           /usr/share/polkit-1/actions/org.jellyfin.service.policy \
+           /usr/share/applications/jellyfin-tray.desktop
+rm -f ~/.config/autostart/jellyfin-tray.desktop
 ```
 
 ## License
