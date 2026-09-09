@@ -26,3 +26,6 @@ sudo rm -f /usr/local/bin/jellyfin-tray /usr/share/polkit-1/actions/org.jellyfin
 
 ## License
 Distributed under the GNU General Public License v3.0. See `LICENSE` for details.
+
+## Disclaimer
+This is an independent community utility and is not affiliated with, endorsed by, or connected to the official Jellyfin project.
