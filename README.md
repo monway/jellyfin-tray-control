@@ -41,7 +41,10 @@ rm -f ~/.config/autostart/jellyfin-tray.desktop
 ```
 
 ## License
-Distributed under the GNU General Public License v3.0. See `LICENSE` for details.
+
+Copyright (C) 2026 Jesse Dylan Mahoney (何孟維)
+
+Distributed under the GNU General Public License v3.0. See [LICENSE](LICENSE) for details.
 
 ## Disclaimer
 This is an independent community utility and is not affiliated with, endorsed by, or connected to the official Jellyfin project.
