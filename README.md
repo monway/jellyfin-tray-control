@@ -7,7 +7,6 @@
 
 ---
 
-A lightweight system tray indicator for managing Jellyfin Server on Debian and Linux desktops.
 
 ## Features
 
