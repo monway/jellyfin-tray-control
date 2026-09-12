@@ -3,48 +3,47 @@
 A lightweight system tray indicator for managing Jellyfin Server on Debian and Linux desktops.
 
 ## Features
-- **Auto-Detection:** Automatically detects native systemd service (`jellyfin.service`) or Flatpak container (`org.jellyfin.JellyfinServer`).
-- **Event-Driven:** Uses GIO D-Bus signal subscriptions instead of active polling (0.0% idle CPU).
+
+- **Auto-Detection:** Automatically detects native systemd service (`jellyfin.service�) or Flatpak container (`org.jellyfin.JellyfinServer`).
+-​ **Event-Driven:** Uses GIO D-Bus signal subscriptions instead of active polling (0.0% idle CPU).
+- **Zero-Password Control:** Direct integration with systemd via PolicyKit rules without requiring passwords.
 - **Lightweight:** Minimal memory footprint (<15 MB RSS).
 - **Non-Blocking:** Responsive GTK3 / AyatanaAppIndicator interface.
 
 ## Security & Privileges
-- **Polkit Integration:** Uses a dedicated PolicyKit action (`org.jellyfin.service.policy`) to manage service states via D-Bus.
-- **No Sudoers Modification:** Avoids `/etc/sudoers.d/` overrides, preserving standard Linux privilege separation and safe user-space execution.
+
+- **Polkit Integration:** Uses a scoped JavaScript PolicyKit rule (`10-jellyfin.rules`) restricted exclusively to `jellyfin.service`.
+- **No Sudoers Modification:** Zero `/etc/sudoers.d/` overrides, preserving standard Linux privilege boundaries and user-space security.
 
 ## Installation & Dependencies (Debian/Ubuntu)
 
-Install system dependencies:
+Install dependencies:
 ```bash
 sudo apt install python3-gi python3-gi-cairo gir1.2-gtk-3.0 gir1.2-ayatanaappindicator3-0.1
 ```
 
-Install binary, Polkit policy, and desktop launcher:
+Install binary, Polkit rule, and desktop launcher:
 ```bash
-sudo install -m 0644 org.jellyfin.service.policy /usr/share/polkit-1/actions/
+sudo install -m 0644 10-jellyfin.rules /etc/polkit-1/rules.d/
 sudo install -m 755 jellyfin-tray /usr/local/bin/jellyfin-tray
 sudo install -m 644 jellyfin-tray.desktop /usr/share/applications/
 ```
 
-*(Optional)* Enable automatic startup on desktop login:
+...( Optional ) ... Enable automatic startup on desktop login:
 ```bash
 mkdir -p ~/.config/autostart
 cp jellyfin-tray.desktop ~/.config/autostart/
 ```
 
 ## Uninstallation
+
 ```bash
 sudo rm -f /usr/local/bin/jellyfin-tray \
-           /usr/share/polkit-1/actions/org.jellyfin.service.policy \
+           /etc/polkit-1/rules.d/10-jellyfin.rules \
            /usr/share/applications/jellyfin-tray.desktop
 rm -f ~/.config/autostart/jellyfin-tray.desktop
 ```
 
 ## License
 
-Copyright (C) 2026 Jesse Dylan Mahoney (何孟維)
-
-Distributed under the GNU General Public License v3.0. See [LICENSE](LICENSE) for details.
-
-## Disclaimer
-This is an independent community utility and is not affiliated with, endorsed by, or connected to the official Jellyfin project.
+Copyright (C) 2026 Jesse Dylan Mahoney (何�

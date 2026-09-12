@@ -1,3 +1,13 @@
+jellyfin-tray-control (1.1.0) unstable; urgency=medium
+
+  * Switch to native systemd D-Bus Manager calls for start and stop.
+  * Correct D-Bus hex escape path pattern (jellyfin_2eservice) for live updates.
+  * Implement PolicyKit JavaScript rule for zero-password service control.
+  * Remove deprecated sudoers and policy files.
+  * Add custom About dialog with AMITUOFO tribute and styling.
+
+ -- Dylan <loki@hell>  Sat, 12 Sep 2026 11:45:00 -0400
+
 jellyfin-tray-control (1.0.0) unstable; urgency=medium
 
   * Initial release of the Jellyfin system tray controller.
