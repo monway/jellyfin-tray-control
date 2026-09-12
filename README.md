@@ -4,7 +4,7 @@
 
 | Tray Menu Interface | Luxury About Dialog |
 | :---: | :---: |
-| ![Tray Menu](screenshots/tray-menu.png) | ![About Dialog](screenshots/about-dialog.png) |
+| <img src='screenshots/tray-menu.png' width='320'> | <img src='screenshots/about-dialog.png' width='320'> |
 
 ---
 
