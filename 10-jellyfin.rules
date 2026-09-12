@@ -1,3 +1,6 @@
+// Copyright (C) 2026 Jesse Dylan Mahoney (何孟維)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 polkit.addRule(function(action, subject) {
     if (action.id == "org.freedesktop.systemd1.manage-units") {
         if (action.lookup("unit") == "jellyfin.service") {
