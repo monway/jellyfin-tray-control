@@ -46,4 +46,4 @@ rm -f ~/.config/autostart/jellyfin-tray.desktop
 
 ## License
 
-Copyright (C) 2026 Jesse Dylan Mahoney (何�
+Copyright (C) 2026 Jesse Dylan Mahoney (何孟維)�
