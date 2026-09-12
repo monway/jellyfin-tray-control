@@ -24,38 +24,52 @@ SYSTEMD_ENCODED_PATH = "jellyfin_2eservice"
 
 ABOUT_CSS = b"""
         window.buddha-card {
-            background-color: #12131a;
-            border: 1px solid rgba(246, 211, 45, 0.28);
-            border-radius: 16px;
-            box-shadow: 0 16px 36px rgba(0, 0, 0, 0.7);
+            background-color: transparent;
         }
-        .lotus-badge {
-            margin-bottom: 2px;
+        /* Heavy sculpted gold outer rim */
+        .buddha-outer-bezel {
+            background: linear-gradient(135deg, #f5d77f 0%, #d4af37 40%, #8c6d23 100%);
+            border-radius: 36px;
+            padding: 4px;
         }
-        .gold-header {
-            color: #e5a50a;
+        /* Recessed dark bevel lip */
+        .buddha-bevel-lip {
+            background: #111215;
+            border-radius: 32px;
+            padding: 6px;
         }
-        .gold-sub {
-            color: #f6d32d;
+        /* Main card face */
+        .buddha-main-face {
+            background: linear-gradient(180deg, #17181d 0%, #121316 100%);
+            border-radius: 26px;
+            padding: 20px 24px;
+        }
+        /* Inner fine gold hairline stroke box */
+        .buddha-inner-border {
+            border: 1px solid rgba(212, 175, 55, 0.35);
+            border-radius: 20px;
+            padding: 16px 20px 20px 20px;
         }
         .card-sep {
-            background-color: rgba(246, 211, 45, 0.18);
+            background-color: rgba(212, 175, 55, 0.25);
             min-height: 1px;
-            margin-top: 4px;
-            margin-bottom: 4px;
+            margin-top: 8px;
+            margin-bottom: 12px;
         }
+        /* Soft glowing gold pill button */
         .buddha-btn {
-            background-image: linear-gradient(to bottom, #20222e, #181922);
-            color: #e5a50a;
+            background: linear-gradient(180deg, #f3cf7a 0%, #d4a737 50%, #b8860b 100%);
+            color: #1a1204;
             font-weight: bold;
-            border: 1px solid rgba(246, 211, 45, 0.35);
-            border-radius: 8px;
-            padding: 7px 32px;
+            font-size: 13px;
+            border-radius: 12px;
+            border: 1px solid #ffe89e;
+            padding: 7px 44px;
+            box-shadow: 0 4px 14px rgba(212, 175, 55, 0.4);
         }
         .buddha-btn:hover {
-            background-image: linear-gradient(to bottom, #2a2c3d, #20222e);
-            color: #f6d32d;
-            border-color: rgba(246, 211, 45, 0.65);
+            background: linear-gradient(180deg, #ffe08d 0%, #e0b441 50%, #c99318 100%);
+            box-shadow: 0 6px 18px rgba(246, 211, 45, 0.6);
         }
 """
 
@@ -248,7 +262,14 @@ class JellyfinTray:
         window.set_position(Gtk.WindowPosition.CENTER)
         window.set_skip_taskbar_hint(True)
         window.set_skip_pager_hint(True)
-        window.set_default_size(340, 310)
+        window.set_app_paintable(True)
+
+        screen = window.get_screen()
+        visual = screen.get_rgba_visual()
+        if visual and screen.is_composited():
+            window.set_visual(visual)
+
+        window.set_default_size(360, 390)
         window.get_style_context().add_class("buddha-card")
 
         self._about_dialog = window
@@ -257,38 +278,53 @@ class JellyfinTray:
             self._about_dialog = None
         window.connect("destroy", _cleanup)
 
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-        box.set_border_width(26)
-        window.add(box)
+        # Layer 1: Sculpted outer gold rim
+        bezel = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        bezel.get_style_context().add_class("buddha-outer-bezel")
+        window.add(bezel)
+
+        # Layer 2: Inset dark bezel channel
+        lip = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        lip.get_style_context().add_class("buddha-bevel-lip")
+        bezel.pack_start(lip, True, True, 0)
+
+        # Layer 3: Onyx main face
+        face = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        face.get_style_context().add_class("buddha-main-face")
+        lip.pack_start(face, True, True, 0)
+
+        # Layer 4: Inset hairline accent frame
+        inner_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        inner_box.get_style_context().add_class("buddha-inner-border")
+        face.pack_start(inner_box, True, True, 0)
 
         lotus = Gtk.Label()
-        lotus.set_markup("<span font='40'>🪷</span>")
-        lotus.get_style_context().add_class("lotus-badge")
-        box.pack_start(lotus, False, False, 0)
+        lotus.set_markup("<span font='48'>🪷</span>")
+        inner_box.pack_start(lotus, False, False, 2)
 
         tribute = Gtk.Label()
-        tribute.set_markup("<span weight='bold' size='large' letter_spacing='4500' foreground='#e5a50a'>AMITUOFO</span>")
-        box.pack_start(tribute, False, False, 0)
+        tribute.set_markup("<span weight='bold' size='large' letter_spacing='5500' foreground='#f5d77f'>AMITUOFO</span>")
+        inner_box.pack_start(tribute, False, False, 2)
 
         chars = Gtk.Label()
-        chars.set_markup("<span size='small' alpha='85%' letter_spacing='3000' foreground='#f6d32d'>何 孟 維 佛</span>")
-        box.pack_start(chars, False, False, 0)
+        chars.set_markup("<span size='small' alpha='85%' letter_spacing='4000' foreground='#d4af37'>阿 彌 陀 佛</span>")
+        inner_box.pack_start(chars, False, False, 2)
 
         sep = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
         sep.get_style_context().add_class("card-sep")
-        box.pack_start(sep, False, False, 6)
+        inner_box.pack_start(sep, False, False, 6)
 
         title = Gtk.Label()
         title.set_markup("<span weight='bold' size='medium' foreground='#ffffff'>Jellyfin Tray Control</span>")
-        box.pack_start(title, False, False, 0)
+        inner_box.pack_start(title, False, False, 2)
 
         author = Gtk.Label()
-        author.set_markup("<span size='small' foreground='#c0bfbc'>Jesse Dylan Mahoney (何孟維)</span>")
-        box.pack_start(author, False, False, 0)
+        author.set_markup("<span size='small' foreground='#c5c6c9'>Jesse Dylan Mahoney (何孟維)</span>")
+        inner_box.pack_start(author, False, False, 1)
 
         desc = Gtk.Label()
-        desc.set_markup("<span size='x-small' alpha='65%' foreground='#a6adc8'>Lightweight Native Linux System Indicator</span>")
-        box.pack_start(desc, False, False, 0)
+        desc.set_markup("<span size='x-small' alpha='65%' foreground='#9a9ca3'>Lightweight Native Linux System Indicator</span>")
+        inner_box.pack_start(desc, False, False, 4)
 
         btn_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         btn_box.set_halign(Gtk.Align.CENTER)
@@ -296,7 +332,7 @@ class JellyfinTray:
         btn_close.get_style_context().add_class("buddha-btn")
         btn_close.connect("clicked", lambda w: window.destroy())
         btn_box.pack_start(btn_close, False, False, 0)
-        box.pack_end(btn_box, False, False, 6)
+        inner_box.pack_end(btn_box, False, False, 4)
 
         window.show_all()
 
