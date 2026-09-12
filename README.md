@@ -4,7 +4,7 @@ A lightweight system tray indicator for managing Jellyfin Server on Debian and L
 
 ## Features
 
-- **Auto-Detection:** Automatically detects native systemd service (`jellyfin.service€) or Flatpak container (`org.jellyfin.JellyfinServer`).
+- **Auto-Detection:** Automatically detects native systemd service (`jellyfin.service) or Flatpak container (`org.jellyfin.JellyfinServer`).
 -â€‹ **Event-Driven:** Uses GIO D-Bus signal subscriptions instead of active polling (0.0% idle CPU).
 - **Zero-Password Control:** Direct integration with systemd via PolicyKit rules without requiring passwords.
 - **Lightweight:** Minimal memory footprint (<15 MB RSS).
