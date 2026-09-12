@@ -1,24 +1,7 @@
 #!/usr/bin/env python3
-"""
-Jellyfin Tray Control - Lightweight system tray indicator for Jellyfin Server
+# Copyright (C) 2026 Jesse Dylan Mahoney (何孟維)
+# Distributed under the terms of the GNU General Public License v3.0
 
-Copyright (C) 2026 Jesse Dylan Mahoney (何孟維)
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU General Public License for more details.
-
-DISCLAIMER:
-This project is an independent open-source utility and is not affiliated,
-associated, authorized, endorsed by, or in any way officially connected
-with the Jellyfin project, Jellyfin team, or any of its subsidiaries or affiliates.
-"""
 import shutil
 import subprocess
 import webbrowser
@@ -280,6 +263,9 @@ class JellyfinTray:
             subprocess.Popen(["flatpak", "kill", FLATPAK_ID])
 
     def _show_about(self, widget):
+        if getattr(self, "_about_dialog", None) is not None:
+            self._about_dialog.present()
+            return
         dialog = Gtk.Window(type=Gtk.WindowType.TOPLEVEL)
         dialog.set_title("About Jellyfin Tray Control")
         dialog.set_modal(True)
