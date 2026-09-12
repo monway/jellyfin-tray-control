@@ -1,5 +1,12 @@
 # Jellyfin Tray Control
 
+## Visual Preview
+
+| Tray Menu Interface | Luxury About Dialog |
+| :---: | :---: |
+
+---
+
 A lightweight system tray indicator for managing Jellyfin Server on Debian and Linux desktops.
 
 ## Features
