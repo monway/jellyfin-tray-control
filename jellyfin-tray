@@ -23,66 +23,40 @@ SYSTEMD_UNIT = "jellyfin.service"
 SYSTEMD_ENCODED_PATH = "jellyfin_2eservice"
 
 ABOUT_CSS = b"""
-window.buddha-window {
-    background-color: #14171a;
-    border: 1px solid #3d3424;
-    border-radius: 12px;
-}
-label.lotus-icon {
-    font-size: 38px;
-    color: #c99a4e;
-    margin-top: 10px;
-    margin-bottom: 2px;
-}
-label.mantra-title {
-    font-size: 19px;
-    font-weight: 700;
-    letter-spacing: 5px;
-    color: #e5c178;
-    margin-top: 6px;
-    margin-bottom: 2px;
-}
-label.mantra-chinese {
-    font-size: 15px;
-    letter-spacing: 6px;
-    color: #8c734b;
-    margin-bottom: 12px;
-}
-label.divider {
-    color: #3d3424;
-    font-size: 12px;
-    margin-bottom: 12px;
-}
-label.app-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: #d1d5db;
-    margin-bottom: 4px;
-}
-label.author-line {
-    font-size: 12px;
-    color: #9ca3af;
-    margin-bottom: 2px;
-}
-label.desc-line {
-    font-size: 11px;
-    color: #6b7280;
-    margin-bottom: 16px;
-}
-button.close-btn {
-    background: #231f18;
-    color: #c99a4e;
-    border: 1px solid #4a3e29;
-    border-radius: 6px;
-    padding: 6px 28px;
-    font-weight: 600;
-    letter-spacing: 1px;
-}
-button.close-btn:hover {
-    background: #342c20;
-    color: #e5c178;
-    border-color: #6e5c3c;
-}
+        window.buddha-card {
+            background-color: #12131a;
+            border: 1px solid rgba(246, 211, 45, 0.28);
+            border-radius: 16px;
+            box-shadow: 0 16px 36px rgba(0, 0, 0, 0.7);
+        }
+        .lotus-badge {
+            margin-bottom: 2px;
+        }
+        .gold-header {
+            color: #e5a50a;
+        }
+        .gold-sub {
+            color: #f6d32d;
+        }
+        .card-sep {
+            background-color: rgba(246, 211, 45, 0.18);
+            min-height: 1px;
+            margin-top: 4px;
+            margin-bottom: 4px;
+        }
+        .buddha-btn {
+            background-image: linear-gradient(to bottom, #20222e, #181922);
+            color: #e5a50a;
+            font-weight: bold;
+            border: 1px solid rgba(246, 211, 45, 0.35);
+            border-radius: 8px;
+            padding: 7px 32px;
+        }
+        .buddha-btn:hover {
+            background-image: linear-gradient(to bottom, #2a2c3d, #20222e);
+            color: #f6d32d;
+            border-color: rgba(246, 211, 45, 0.65);
+        }
 """
 
 class JellyfinTray:
@@ -266,56 +240,65 @@ class JellyfinTray:
         if getattr(self, "_about_dialog", None) is not None:
             self._about_dialog.present()
             return
-        dialog = Gtk.Window(type=Gtk.WindowType.TOPLEVEL)
-        dialog.set_title("About Jellyfin Tray Control")
-        dialog.set_modal(True)
-        dialog.set_resizable(False)
-        dialog.set_position(Gtk.WindowPosition.CENTER)
-        dialog.set_default_size(360, 360)
-        dialog.get_style_context().add_class("buddha-window")
 
-        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
-        vbox.set_border_width(28)
-        dialog.add(vbox)
+        window = Gtk.Window(type=Gtk.WindowType.TOPLEVEL)
+        window.set_decorated(False)
+        window.set_modal(True)
+        window.set_resizable(False)
+        window.set_position(Gtk.WindowPosition.CENTER)
+        window.set_skip_taskbar_hint(True)
+        window.set_skip_pager_hint(True)
+        window.set_default_size(340, 310)
+        window.get_style_context().add_class("buddha-card")
 
-        lotus = Gtk.Label(label="🪷")
-        lotus.get_style_context().add_class("lotus-icon")
-        vbox.pack_start(lotus, False, False, 0)
+        self._about_dialog = window
 
-        mantra = Gtk.Label(label="AMITUOFO")
-        mantra.get_style_context().add_class("mantra-title")
-        vbox.pack_start(mantra, False, False, 0)
+        def _cleanup(*_):
+            self._about_dialog = None
+        window.connect("destroy", _cleanup)
 
-        mantra_cn = Gtk.Label(label="阿 彌 陀 佛")
-        mantra_cn.get_style_context().add_class("mantra-chinese")
-        vbox.pack_start(mantra_cn, False, False, 0)
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        box.set_border_width(26)
+        window.add(box)
 
-        divider = Gtk.Label(label="— ☸ —")
-        divider.get_style_context().add_class("divider")
-        vbox.pack_start(divider, False, False, 0)
+        lotus = Gtk.Label()
+        lotus.set_markup("<span font='40'>🪷</span>")
+        lotus.get_style_context().add_class("lotus-badge")
+        box.pack_start(lotus, False, False, 0)
 
-        title = Gtk.Label(label="Jellyfin Tray Control")
-        title.get_style_context().add_class("app-title")
-        vbox.pack_start(title, False, False, 0)
+        tribute = Gtk.Label()
+        tribute.set_markup("<span weight='bold' size='large' letter_spacing='4500' foreground='#e5a50a'>AMITUOFO</span>")
+        box.pack_start(tribute, False, False, 0)
 
-        author = Gtk.Label(label="Jesse Dylan Mahoney (何孟維)")
-        author.get_style_context().add_class("author-line")
-        vbox.pack_start(author, False, False, 0)
+        chars = Gtk.Label()
+        chars.set_markup("<span size='small' alpha='85%' letter_spacing='3000' foreground='#f6d32d'>何 孟 維 佛</span>")
+        box.pack_start(chars, False, False, 0)
 
-        desc = Gtk.Label(label="Lightweight Native Linux System Indicator")
-        desc.get_style_context().add_class("desc-line")
-        vbox.pack_start(desc, False, False, 0)
+        sep = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
+        sep.get_style_context().add_class("card-sep")
+        box.pack_start(sep, False, False, 6)
+
+        title = Gtk.Label()
+        title.set_markup("<span weight='bold' size='medium' foreground='#ffffff'>Jellyfin Tray Control</span>")
+        box.pack_start(title, False, False, 0)
+
+        author = Gtk.Label()
+        author.set_markup("<span size='small' foreground='#c0bfbc'>Jesse Dylan Mahoney (何孟維)</span>")
+        box.pack_start(author, False, False, 0)
+
+        desc = Gtk.Label()
+        desc.set_markup("<span size='x-small' alpha='65%' foreground='#a6adc8'>Lightweight Native Linux System Indicator</span>")
+        box.pack_start(desc, False, False, 0)
 
         btn_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         btn_box.set_halign(Gtk.Align.CENTER)
-        vbox.pack_end(btn_box, False, False, 0)
+        btn_close = Gtk.Button(label="Close")
+        btn_close.get_style_context().add_class("buddha-btn")
+        btn_close.connect("clicked", lambda w: window.destroy())
+        btn_box.pack_start(btn_close, False, False, 0)
+        box.pack_end(btn_box, False, False, 6)
 
-        close_btn = Gtk.Button(label="Close")
-        close_btn.get_style_context().add_class("close-btn")
-        close_btn.connect("clicked", lambda _: dialog.destroy())
-        btn_box.pack_start(close_btn, False, False, 0)
-
-        dialog.show_all()
+        window.show_all()
 
 def main():
     JellyfinTray()
