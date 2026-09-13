@@ -561,10 +561,7 @@ class JellyfinTray:
             GLib.idle_add(self._check_systemd_status)
 
     def _on_menu_show(self, widget):
-        if self.backend == "systemd":
-            self._check_systemd_status()
-        elif self.backend == "flatpak":
-            self._check_flatpak_status()
+        pass
 
     def _check_systemd_status(self):
         res = subprocess.run(
@@ -612,7 +609,7 @@ class JellyfinTray:
 
         if self.is_active:
             web_item = Gtk.MenuItem(label="🌐 Open Web Dashboard")
-            web_item.connect("activate", lambda _: webbrowser.open(WEB_URL))
+            web_item.connect("activate", lambda _: webbrowser.open(f"{WEB_URL}/web/index.html#!/dashboard.html"))
             self.menu.append(web_item)
 
             sep2 = Gtk.SeparatorMenuItem()
