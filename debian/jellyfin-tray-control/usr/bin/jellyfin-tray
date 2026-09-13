@@ -9,7 +9,6 @@ import subprocess
 import webbrowser
 import threading
 
-# Silence GObject runtime diagnostics
 os.environ["G_ENABLE_DIAGNOSTIC"] = "0"
 
 import gi
@@ -24,7 +23,6 @@ except (ValueError, ImportError):
 
 from gi.repository import Gtk, Gdk, GLib, Gio
 
-# Suppress upstream C-level Ayatana deprecation notice
 try:
     GLib.log_set_handler(
         "libayatana-appindicator",
@@ -108,6 +106,141 @@ APP_CSS = b"""
             border-radius: 7px;
         }
 """
+
+class PlayerInstallerModal(Gtk.Window):
+    def __init__(self, tray_ref):
+        super().__init__(type=Gtk.WindowType.TOPLEVEL)
+        self.tray = tray_ref
+
+        self.set_decorated(False)
+        self.set_modal(True)
+        self.set_resizable(False)
+        self.set_position(Gtk.WindowPosition.CENTER)
+        self.set_skip_taskbar_hint(True)
+        self.set_skip_pager_hint(True)
+        self.set_app_paintable(True)
+
+        screen = self.get_screen()
+        visual = screen.get_rgba_visual()
+        if visual and screen.is_composited():
+            self.set_visual(visual)
+
+        self.set_default_size(420, 360)
+        self.get_style_context().add_class("buddha-card")
+
+        bezel = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        bezel.get_style_context().add_class("buddha-outer-bezel")
+        self.add(bezel)
+
+        lip = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        lip.get_style_context().add_class("buddha-bevel-lip")
+        bezel.pack_start(lip, True, True, 0)
+
+        face = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        face.get_style_context().add_class("buddha-main-face")
+        lip.pack_start(face, True, True, 0)
+
+        inner = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        inner.get_style_context().add_class("buddha-inner-border")
+        face.pack_start(inner, True, True, 0)
+
+        lotus = Gtk.Label()
+        lotus.set_markup("<span font='36'>🪷</span>")
+        inner.pack_start(lotus, False, False, 0)
+
+        title = Gtk.Label()
+        title.set_markup("<span weight='bold' size='medium' letter_spacing='3500' foreground='#f5d77f'>JELLYFIN PLAYER SETUP</span>")
+        inner.pack_start(title, False, False, 0)
+
+        chars = Gtk.Label()
+        chars.set_markup("<span size='small' alpha='85%' letter_spacing='3000' foreground='#d4af37'>播 放 器 安 裝</span>")
+        inner.pack_start(chars, False, False, 0)
+
+        sep = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
+        sep.get_style_context().add_class("card-sep")
+        inner.pack_start(sep, False, False, 4)
+
+        self.status_lbl = Gtk.Label()
+        self.status_lbl.set_line_wrap(True)
+        self.status_lbl.set_justify(Gtk.Justification.CENTER)
+        self.status_lbl.set_markup("<span size='small' foreground='#e4e4eb'>Preparing background package installation...</span>")
+        inner.pack_start(self.status_lbl, False, False, 4)
+
+        self.pbar = Gtk.ProgressBar()
+        self.pbar.set_fraction(0.1)
+        inner.pack_start(self.pbar, False, False, 6)
+
+        self.action_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        self.action_box.set_halign(Gtk.Align.CENTER)
+        inner.pack_end(self.action_box, False, False, 4)
+
+        self.show_all()
+        threading.Thread(target=self._run_install_worker, daemon=True).start()
+
+    def _set_progress(self, frac, text):
+        self.pbar.set_fraction(frac)
+        self.status_lbl.set_markup(f"<span size='small' foreground='#f5d77f'>{text}</span>")
+
+    def _run_install_worker(self):
+        if self.tray.backend == "flatpak":
+            GLib.idle_add(self._set_progress, 0.3, "Connecting to Flathub repository...")
+            subprocess.run(["flatpak", "remote-add", "--if-not-exists", "flathub", "https://dl.flathub.org/repo/flathub.flatpakrepo"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            
+            GLib.idle_add(self._set_progress, 0.6, "Downloading & installing Jellyfin Player container...")
+            res = subprocess.run(["flatpak", "install", "-y", "flathub", FLATPAK_CLIENT_ID], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            player_type = "flatpak"
+        else:
+            GLib.idle_add(self._set_progress, 0.3, "Updating package cache in background...")
+            subprocess.run(["pkexec", "apt-get", "update"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            
+            GLib.idle_add(self._set_progress, 0.7, "Installing Jellyfin Player package...")
+            res = subprocess.run(["pkexec", "apt-get", "install", "-y", "jellyfin-media-player"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            player_type = "native"
+
+        if res.returncode == 0:
+            GLib.idle_add(self._set_progress, 1.0, "Installation complete!")
+            GLib.idle_add(self._on_finish, player_type)
+        else:
+            GLib.idle_add(self._set_progress, 1.0, "Installation failed. Please check network/sources.")
+            GLib.idle_add(self._show_close_button)
+
+    def _show_close_button(self):
+        btn = Gtk.Button(label="Close")
+        btn.get_style_context().add_class("buddha-btn-secondary")
+        btn.connect("clicked", lambda _: self.destroy())
+        self.action_box.pack_start(btn, False, False, 0)
+        self.action_box.show_all()
+
+    def _on_finish(self, player_type):
+        if self.tray.backend == "systemd":
+            self.tray._check_systemd_status()
+        elif self.tray.backend == "flatpak":
+            self.tray._check_flatpak_status()
+
+        if self.tray.is_active:
+            self.status_lbl.set_markup("<span size='small' foreground='#f5d77f'>Launching Jellyfin Player...</span>")
+            GLib.timeout_add_seconds(1, lambda: (self.destroy(), self.tray._execute_player(player_type)))
+        else:
+            self.status_lbl.set_markup(
+                "<span size='small' foreground='#e4e4eb'>Player installed successfully.\n"
+                "Server is currently stopped. Start server now?</span>"
+            )
+            btn_close = Gtk.Button(label="Later")
+            btn_close.get_style_context().add_class("buddha-btn-secondary")
+            btn_close.connect("clicked", lambda _: self.destroy())
+            self.action_box.pack_start(btn_close, False, False, 0)
+
+            btn_start = Gtk.Button(label="Start Server & Launch")
+            btn_start.get_style_context().add_class("buddha-btn")
+            btn_start.connect("clicked", lambda _: self._start_and_launch(player_type))
+            self.action_box.pack_start(btn_start, False, False, 0)
+            self.action_box.show_all()
+
+    def _start_and_launch(self, player_type):
+        self.tray._start_service(None)
+        self.status_lbl.set_markup("<span size='small' foreground='#f5d77f'>Starting server & launching player...</span>")
+        GLib.timeout_add_seconds(2, lambda: (self.destroy(), self.tray._execute_player(player_type)))
+
 
 class InstallerDialog(Gtk.Window):
     def __init__(self, on_complete_cb, dry_run=False):
@@ -290,7 +423,7 @@ class InstallerDialog(Gtk.Window):
         try:
             for frac, text, cmd in cmds:
                 GLib.idle_add(self._update_progress, frac, text)
-                res = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+                res = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 if res.returncode != 0:
                     GLib.idle_add(self._update_progress, frac, f"Error: Command failed ({res.returncode})")
                     GLib.idle_add(self.btn_cancel.set_sensitive, True)
@@ -556,16 +689,16 @@ class JellyfinTray:
             buttons=Gtk.ButtonsType.NONE,
             text="Jellyfin Server is Stopped"
         )
-        dialog.format_secondary_text("The Jellyfin Server must be running before launching Jellyfin Player.\n\nWould you like to start the server now?")
+        dialog.format_secondary_text(
+            "The Jellyfin Server must be running before launching Jellyfin Player.\n\nWould you like to start the server now?"
+        )
         dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
         dialog.add_button("Start Server & Launch", Gtk.ResponseType.OK)
-        
         response = dialog.run()
         dialog.destroy()
-        
+
         if response == Gtk.ResponseType.OK:
             self._start_service(None)
-            # Give server daemon a moment to register socket before launching player
             GLib.timeout_add_seconds(2, lambda: self._execute_player(player_type) or False)
 
     def _prompt_and_install_player(self):
@@ -576,68 +709,28 @@ class JellyfinTray:
             buttons=Gtk.ButtonsType.YES_NO,
             text="Jellyfin Player Not Found"
         )
-        dialog.format_secondary_text("Jellyfin Player is not installed on your system.\n\nWould you like to install Jellyfin Media Player now?")
+        dialog.format_secondary_text(
+            "Jellyfin Player is not installed on your system.\n\nWould you like to install Jellyfin Media Player now?"
+        )
         response = dialog.run()
         dialog.destroy()
 
         if response == Gtk.ResponseType.YES:
-            # Run installation in background worker thread
-            threading.Thread(target=self._run_player_install_worker, daemon=True).start()
-
-    def _run_player_install_worker(self):
-        # Choose backend based on server backend preference
-        if self.backend == "flatpak":
-            cmd = ["flatpak", "install", "-y", "flathub", FLATPAK_CLIENT_ID]
-            player_type = "flatpak"
-        else:
-            cmd = ["pkexec", "apt-get", "install", "-y", "jellyfin-media-player"]
-            player_type = "native"
-
-        res = subprocess.run(cmd)
-        if res.returncode == 0:
-            GLib.idle_add(self._on_player_install_success, player_type)
-        else:
-            GLib.idle_add(self._show_info_dialog, "Installation Failed", "Could not install Jellyfin Player. Please check package sources.")
-
-    def _show_info_dialog(self, title, msg):
-        dlg = Gtk.MessageDialog(
-            transient_for=None,
-            flags=0,
-            message_type=Gtk.MessageType.INFO,
-            buttons=Gtk.ButtonsType.OK,
-            text=title
-        )
-        dlg.format_secondary_text(msg)
-        dlg.run()
-        dlg.destroy()
-
-    def _on_player_install_success(self, player_type):
-        # Re-check server state
-        if self.backend == "systemd":
-            self._check_systemd_status()
-        elif self.backend == "flatpak":
-            self._check_flatpak_status()
-
-        if self.is_active:
-            self._execute_player(player_type)
-        else:
-            self._show_server_stopped_warning(player_type)
+            PlayerInstallerModal(self)
 
     def _launch_client(self, widget):
         player_type = self._is_player_installed()
 
-        # 1. Not installed: Prompt user to install
         if not player_type:
             self._prompt_and_install_player()
             return
 
-        # 2. Installed, but server is off: warn user
         if not self.is_active:
             self._show_server_stopped_warning(player_type)
             return
 
-        # 3. Installed and server is active: launch directly
         self._execute_player(player_type)
+
     def _confirm_uninstall(self, widget):
         dialog = Gtk.MessageDialog(
             transient_for=None,
