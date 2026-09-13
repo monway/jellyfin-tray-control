@@ -556,11 +556,7 @@ class JellyfinTray:
             buttons=Gtk.ButtonsType.NONE,
             text="Jellyfin Server is Stopped"
         )
-        dialog.format_secondary_text(
-            "The Jellyfin Server must be running before launching Jellyfin Player.
-
-Would you like to start the server now?"
-        )
+        dialog.format_secondary_text("The Jellyfin Server must be running before launching Jellyfin Player.\n\nWould you like to start the server now?")
         dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
         dialog.add_button("Start Server & Launch", Gtk.ResponseType.OK)
         
@@ -580,11 +576,7 @@ Would you like to start the server now?"
             buttons=Gtk.ButtonsType.YES_NO,
             text="Jellyfin Player Not Found"
         )
-        dialog.format_secondary_text(
-            "Jellyfin Player is not installed on your system.
-
-Would you like to install Jellyfin Media Player now?"
-        )
+        dialog.format_secondary_text("Jellyfin Player is not installed on your system.\n\nWould you like to install Jellyfin Media Player now?")
         response = dialog.run()
         dialog.destroy()
 
