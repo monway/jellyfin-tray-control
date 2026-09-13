@@ -2,49 +2,49 @@
 # Copyright (C) 2026 Jesse Dylan Mahoney (何孟維)
 # Distributed under the terms of the GNU General Public License v3.0
 
+import os
+import sys
 import shutil
 import subprocess
 import webbrowser
+import threading
 import gi
 
-gi.require_version('Gtk', '3.0')
+gi.require_version("Gtk", "3.0")
 try:
-    gi.require_version('AyatanaAppIndicator3', '0.1')
+    gi.require_version("AyatanaAppIndicator3", "0.1")
     from gi.repository import AyatanaAppIndicator3 as AppIndicator
 except (ValueError, ImportError):
-    gi.require_version('AppIndicator3', '0.1')
+    gi.require_version("AppIndicator3", "0.1")
     from gi.repository import AppIndicator3 as AppIndicator
 
 from gi.repository import Gtk, Gdk, GLib, Gio
 
-FLATPAK_ID = "org.jellyfin.JellyfinServer"
+FLATPAK_SERVER_ID = "org.jellyfin.JellyfinServer"
+FLATPAK_CLIENT_ID = "com.github.iwalton3.jellyfin-media-player"
 WEB_URL = "http://localhost:8096"
 SYSTEMD_UNIT = "jellyfin.service"
 SYSTEMD_ENCODED_PATH = "jellyfin_2eservice"
 
-ABOUT_CSS = b"""
+APP_CSS = b"""
         window.buddha-card {
             background-color: transparent;
         }
-        /* Heavy sculpted gold outer rim */
         .buddha-outer-bezel {
             background: linear-gradient(135deg, #f5d77f 0%, #d4af37 40%, #8c6d23 100%);
             border-radius: 36px;
             padding: 4px;
         }
-        /* Recessed dark bevel lip */
         .buddha-bevel-lip {
             background: #111215;
             border-radius: 32px;
             padding: 6px;
         }
-        /* Main card face */
         .buddha-main-face {
             background: linear-gradient(180deg, #17181d 0%, #121316 100%);
             border-radius: 26px;
             padding: 20px 24px;
         }
-        /* Inner fine gold hairline stroke box */
         .buddha-inner-border {
             border: 1px solid rgba(212, 175, 55, 0.35);
             border-radius: 20px;
@@ -56,7 +56,6 @@ ABOUT_CSS = b"""
             margin-top: 8px;
             margin-bottom: 12px;
         }
-        /* Soft glowing gold pill button */
         .buddha-btn {
             background: linear-gradient(180deg, #f3cf7a 0%, #d4a737 50%, #b8860b 100%);
             color: #1a1204;
@@ -64,14 +63,232 @@ ABOUT_CSS = b"""
             font-size: 13px;
             border-radius: 12px;
             border: 1px solid #ffe89e;
-            padding: 7px 44px;
+            padding: 7px 32px;
             box-shadow: 0 4px 14px rgba(212, 175, 55, 0.4);
         }
         .buddha-btn:hover {
             background: linear-gradient(180deg, #ffe08d 0%, #e0b441 50%, #c99318 100%);
             box-shadow: 0 6px 18px rgba(246, 211, 45, 0.6);
         }
+        .buddha-btn-secondary {
+            background: #25262c;
+            color: #c5c6c9;
+            font-size: 12px;
+            border-radius: 12px;
+            border: 1px solid #3d3e47;
+            padding: 7px 20px;
+        }
+        .buddha-btn-secondary:hover {
+            background: #32333b;
+            color: #ffffff;
+        }
+        progressbar trough {
+            background-color: #111215;
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 8px;
+            min-height: 8px;
+        }
+        progressbar progress {
+            background: linear-gradient(90deg, #d4af37 0%, #f5d77f 100%);
+            border-radius: 7px;
+        }
 """
+
+class InstallerDialog(Gtk.Window):
+    def __init__(self, on_complete_cb, dry_run=False):
+        super().__init__(type=Gtk.WindowType.TOPLEVEL)
+        self.on_complete_cb = on_complete_cb
+        self.dry_run = dry_run
+
+        self.set_decorated(False)
+        self.set_modal(True)
+        self.set_resizable(False)
+        self.set_position(Gtk.WindowPosition.CENTER)
+        self.set_skip_taskbar_hint(True)
+        self.set_skip_pager_hint(True)
+        self.set_app_paintable(True)
+
+        screen = self.get_screen()
+        visual = screen.get_rgba_visual()
+        if visual and screen.is_composited():
+            self.set_visual(visual)
+
+        self.set_default_size(440, 560)
+        self.get_style_context().add_class("buddha-card")
+
+        bezel = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        bezel.get_style_context().add_class("buddha-outer-bezel")
+        self.add(bezel)
+
+        lip = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        lip.get_style_context().add_class("buddha-bevel-lip")
+        bezel.pack_start(lip, True, True, 0)
+
+        face = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        face.get_style_context().add_class("buddha-main-face")
+        lip.pack_start(face, True, True, 0)
+
+        inner = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        inner.get_style_context().add_class("buddha-inner-border")
+        face.pack_start(inner, True, True, 0)
+
+        lotus = Gtk.Label()
+        lotus.set_markup("<span font='40'>🪷</span>")
+        inner.pack_start(lotus, False, False, 0)
+
+        title = Gtk.Label()
+        title.set_markup("<span weight='bold' size='medium' letter_spacing='4000' foreground='#f5d77f'>JELLYFIN SUITE SETUP</span>")
+        inner.pack_start(title, False, False, 0)
+
+        chars = Gtk.Label()
+        chars.set_markup("<span size='small' alpha='85%' letter_spacing='3000' foreground='#d4af37'>伺 服 器 與 用 戶 端 安 裝</span>")
+        inner.pack_start(chars, False, False, 0)
+
+        sep = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
+        sep.get_style_context().add_class("card-sep")
+        inner.pack_start(sep, False, False, 4)
+
+        notice = Gtk.Label()
+        notice.set_line_wrap(True)
+        notice.set_justify(Gtk.Justification.CENTER)
+        notice.set_markup(
+            "<span size='small' foreground='#e4e4eb'>Jellyfin Server &amp; Client were not detected.\n"
+            "Automatically configure the suite on your system?</span>"
+        )
+        inner.pack_start(notice, False, False, 2)
+
+        opt_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        self.rb_native = Gtk.RadioButton.new_with_label(None, "Native APT Suite")
+        self.rb_flatpak = Gtk.RadioButton.new_with_label_from_widget(self.rb_native, "Flatpak Suite")
+        
+        lbl_native = self.rb_native.get_children()[0]
+        lbl_native.set_markup("<span size='small' weight='bold' foreground='#dfba73'>Native APT Suite</span> <span size='x-small' alpha='70%' foreground='#ffffff'>(Server daemon + Media Player client)</span>")
+        lbl_flatpak = self.rb_flatpak.get_children()[0]
+        lbl_flatpak.set_markup("<span size='small' weight='bold' foreground='#dfba73'>Flatpak Suite</span> <span size='x-small' alpha='70%' foreground='#ffffff'>(Containerized Server + Client)</span>")
+
+        opt_box.pack_start(self.rb_native, False, False, 0)
+        opt_box.pack_start(self.rb_flatpak, False, False, 0)
+        inner.pack_start(opt_box, False, False, 4)
+
+        self.chk_autostart = Gtk.CheckButton(label="Start Jellyfin Server immediately after installation")
+        chk_lbl = self.chk_autostart.get_children()[0]
+        chk_lbl.set_markup("<span size='x-small' foreground='#f5d77f'>Start Server automatically upon completion</span>")
+        self.chk_autostart.set_active(True)
+        inner.pack_start(self.chk_autostart, False, False, 2)
+
+        self.status_lbl = Gtk.Label()
+        self.status_lbl.set_line_wrap(True)
+        self.status_lbl.set_markup("<span size='x-small' foreground='#a0a0ab'>Ready for automated deployment.</span>")
+        inner.pack_start(self.status_lbl, False, False, 2)
+
+        self.pbar = Gtk.ProgressBar()
+        self.pbar.set_fraction(0.0)
+        inner.pack_start(self.pbar, False, False, 4)
+
+        self.btn_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        self.btn_box.set_halign(Gtk.Align.CENTER)
+
+        self.btn_cancel = Gtk.Button(label="Quit")
+        self.btn_cancel.get_style_context().add_class("buddha-btn-secondary")
+        self.btn_cancel.connect("clicked", lambda _: sys.exit(0))
+        self.btn_box.pack_start(self.btn_cancel, False, False, 0)
+
+        self.btn_install = Gtk.Button(label="Install Now")
+        self.btn_install.get_style_context().add_class("buddha-btn")
+        self.btn_install.connect("clicked", self._start_installation)
+        self.btn_box.pack_start(self.btn_install, False, False, 0)
+
+        inner.pack_start(self.btn_box, False, False, 6)
+
+        footer = Gtk.Label()
+        footer.set_justify(Gtk.Justification.CENTER)
+        footer.set_line_wrap(True)
+        footer.set_markup(
+            "<span size='xx-small' alpha='55%' foreground='#8c8d96'>"
+            "Jellyfin is a registered trademark of the Jellyfin Project.\n"
+            "Jellyfin Tray Control is an independent open-source utility (GPL-3.0).\n"
+            "Jesse Dylan Mahoney (何孟維)</span>"
+        )
+        inner.pack_end(footer, False, False, 2)
+        self.show_all()
+
+    def _update_progress(self, fraction, text):
+        self.pbar.set_fraction(fraction)
+        self.status_lbl.set_markup(f"<span size='x-small' foreground='#f5d77f'>{text}</span>")
+
+    def _start_installation(self, widget):
+        self.btn_install.set_sensitive(False)
+        self.btn_cancel.set_sensitive(False)
+        self.rb_native.set_sensitive(False)
+        self.rb_flatpak.set_sensitive(False)
+        self.chk_autostart.set_sensitive(False)
+
+        target = "apt" if self.rb_native.get_active() else "flatpak"
+        autostart = self.chk_autostart.get_active()
+        threading.Thread(target=self._run_install_worker, args=(target, autostart), daemon=True).start()
+
+    def _run_install_worker(self, target, autostart):
+        if self.dry_run:
+            steps = [
+                (0.2, "Testing environment detection..."),
+                (0.4, "Simulating repository setup..."),
+                (0.7, "Simulating Jellyfin Server &amp; Client package fetch..."),
+                (0.9, "Simulating client desktop configuration..."),
+                (1.0, "Dry-run complete! Initializing tray controller...")
+            ]
+            for frac, msg in steps:
+                import time
+                time.sleep(1.0)
+                GLib.idle_add(self._update_progress, frac, msg)
+            import time
+            time.sleep(0.5)
+            GLib.idle_add(self._finish)
+            return
+
+        if target == "apt":
+            cmds = [
+                (0.2, "Importing official Jellyfin repository signing key...",
+                 ["pkexec", "sh", "-c", "mkdir -p /etc/apt/keyrings && curl -fsSL https://repo.jellyfin.org/jellyfin_team.gpg.key | gpg --dearmor -o /etc/apt/keyrings/jellyfin.gpg --yes"]),
+                (0.4, "Configuring official repository sources...",
+                 ["pkexec", "sh", "-c", ". /etc/os-release && echo \"Types: deb\\nURIs: https://repo.jellyfin.org/${ID}\\nSuites: ${VERSION_CODENAME}\\nComponents: main\\nArchitectures: $(dpkg --print-architecture)\\nSigned-By: /etc/apt/keyrings/jellyfin.gpg\" > /etc/apt/sources.list.d/jellyfin.sources"]),
+                (0.6, "Updating APT indices...",
+                 ["pkexec", "apt-get", "update"]),
+                (0.8, "Installing Jellyfin Server & Client...",
+                 ["pkexec", "apt-get", "install", "-y", "jellyfin", "jellyfin-media-player"])
+            ]
+            if autostart:
+                cmds.append((1.0, "Activating and starting Jellyfin systemd service...",
+                             ["pkexec", "systemctl", "enable", "--now", SYSTEMD_UNIT]))
+        else:
+            cmds = [
+                (0.3, "Enabling Flathub remote repository...",
+                 ["flatpak", "remote-add", "--if-not-exists", "flathub", "https://dl.flathub.org/repo/flathub.flatpakrepo"]),
+                (0.7, "Installing Jellyfin Server container...",
+                 ["flatpak", "install", "-y", "flathub", FLATPAK_SERVER_ID]),
+                (0.9, "Installing Jellyfin Media Player client container...",
+                 ["flatpak", "install", "-y", "flathub", FLATPAK_CLIENT_ID])
+            ]
+            if autostart:
+                cmds.append((1.0, "Starting Jellyfin Server container...",
+                             ["flatpak", "run", FLATPAK_SERVER_ID]))
+
+        try:
+            for frac, text, cmd in cmds:
+                GLib.idle_add(self._update_progress, frac, text)
+                res = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+                if res.returncode != 0:
+                    GLib.idle_add(self._update_progress, frac, f"Error: Command failed ({res.returncode})")
+                    GLib.idle_add(self.btn_cancel.set_sensitive, True)
+                    return
+            GLib.idle_add(self._finish)
+        except Exception as e:
+            GLib.idle_add(self._update_progress, 0.0, f"Failure: {str(e)}")
+            GLib.idle_add(self.btn_cancel.set_sensitive, True)
+
+    def _finish(self):
+        self.destroy()
+        self.on_complete_cb()
+
 
 class JellyfinTray:
     def __init__(self):
@@ -102,12 +319,24 @@ class JellyfinTray:
         self.stop_item.connect("activate", self._stop_service)
         self.menu.append(self.stop_item)
 
+        self.restart_item = Gtk.MenuItem(label="Restart Jellyfin Server")
+        self.restart_item.connect("activate", self._restart_service)
+        self.menu.append(self.restart_item)
+
+        self.client_item = Gtk.MenuItem(label="Launch Jellyfin Client")
+        self.client_item.connect("activate", self._launch_client)
+        self.menu.append(self.client_item)
+
         self.web_item = Gtk.MenuItem(label="Open Web UI")
         self.web_item.connect("activate", lambda _: webbrowser.open(WEB_URL))
         self.menu.append(self.web_item)
 
         self.sep_item = Gtk.SeparatorMenuItem()
         self.menu.append(self.sep_item)
+
+        self.uninstall_item = Gtk.MenuItem(label="Complete Uninstall (Server, Client, Tray)")
+        self.uninstall_item.connect("activate", self._confirm_uninstall)
+        self.menu.append(self.uninstall_item)
 
         self.about_item = Gtk.MenuItem(label="About")
         self.about_item.connect("activate", self._show_about)
@@ -127,13 +356,13 @@ class JellyfinTray:
             self._check_flatpak_status()
             GLib.timeout_add_seconds(10, self._check_flatpak_status)
         else:
-            self._render_state(False, "NOT FOUND")
+            self._render_state(False, "NOT FOUND", "")
 
     def _load_styles(self):
         screen = Gdk.Screen.get_default()
         if screen:
             provider = Gtk.CssProvider()
-            provider.load_from_data(ABOUT_CSS)
+            provider.load_from_data(APP_CSS)
             Gtk.StyleContext.add_provider_for_screen(
                 screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
             )
@@ -150,7 +379,7 @@ class JellyfinTray:
 
         if shutil.which("flatpak"):
             res = subprocess.run(
-                ["flatpak", "info", FLATPAK_ID],
+                ["flatpak", "info", FLATPAK_SERVER_ID],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL
             )
@@ -158,6 +387,25 @@ class JellyfinTray:
                 return "flatpak"
 
         return "none"
+
+    def _get_server_version(self):
+        if self.backend == "systemd" and shutil.which("jellyfin"):
+            try:
+                res = subprocess.run(["jellyfin", "--version"], capture_output=True, text=True)
+                lines = res.stdout.strip().splitlines()
+                if lines:
+                    return lines[0].split()[-1]
+            except Exception:
+                pass
+        elif self.backend == "flatpak":
+            try:
+                res = subprocess.run(["flatpak", "info", FLATPAK_SERVER_ID], capture_output=True, text=True)
+                for line in res.stdout.splitlines():
+                    if "Version:" in line:
+                        return line.split("Version:")[-1].strip()
+            except Exception:
+                pass
+        return "10.9+"
 
     def _setup_systemd_listener(self):
         try:
@@ -192,32 +440,38 @@ class JellyfinTray:
             stderr=subprocess.DEVNULL
         )
         self.is_active = (res.returncode == 0)
-        self._render_state(self.is_active, "Debian/Systemd")
+        ver = self._get_server_version()
+        self._render_state(self.is_active, "APT/Systemd", ver)
         return True
 
     def _check_flatpak_status(self):
         res = subprocess.run(["flatpak", "ps"], capture_output=True, text=True)
-        self.is_active = FLATPAK_ID in res.stdout
-        self._render_state(self.is_active, "Flatpak")
+        self.is_active = FLATPAK_SERVER_ID in res.stdout
+        ver = self._get_server_version()
+        self._render_state(self.is_active, "Flatpak", ver)
         return True
 
-    def _render_state(self, active, backend_label):
+    def _render_state(self, active, backend_label, version):
         if self.backend == "none":
             self.status_item.set_label("Status: BACKEND NOT FOUND")
             self.start_item.set_sensitive(False)
             self.stop_item.set_sensitive(False)
+            self.restart_item.set_sensitive(False)
             self.indicator.set_icon_full("video-display-symbolic", "Jellyfin Missing")
             return
 
+        ver_str = f" v{version}" if version else ""
         if active:
-            self.status_item.set_label(f"Status: RUNNING ({backend_label})")
+            self.status_item.set_label(f"Status: RUNNING ({backend_label}{ver_str})")
             self.start_item.set_sensitive(False)
             self.stop_item.set_sensitive(True)
+            self.restart_item.set_sensitive(True)
             self.indicator.set_icon_full("video-display", "Jellyfin Running")
         else:
-            self.status_item.set_label(f"Status: STOPPED ({backend_label})")
+            self.status_item.set_label(f"Status: STOPPED ({backend_label}{ver_str})")
             self.start_item.set_sensitive(True)
             self.stop_item.set_sensitive(False)
+            self.restart_item.set_sensitive(False)
             self.indicator.set_icon_full("video-display-symbolic", "Jellyfin Stopped")
 
     def _call_systemd_manager(self, method):
@@ -242,13 +496,47 @@ class JellyfinTray:
             if self.backend == "systemd":
                 self._call_systemd_manager("StartUnit")
             elif self.backend == "flatpak":
-                subprocess.Popen(["flatpak", "run", FLATPAK_ID])
+                subprocess.Popen(["flatpak", "run", FLATPAK_SERVER_ID])
 
     def _stop_service(self, widget):
         if self.backend == "systemd":
             self._call_systemd_manager("StopUnit")
         elif self.backend == "flatpak":
-            subprocess.Popen(["flatpak", "kill", FLATPAK_ID])
+            subprocess.Popen(["flatpak", "kill", FLATPAK_SERVER_ID])
+
+    def _restart_service(self, widget):
+        if self.backend == "systemd":
+            self._call_systemd_manager("RestartUnit")
+        elif self.backend == "flatpak":
+            subprocess.run(["flatpak", "kill", FLATPAK_SERVER_ID])
+            subprocess.Popen(["flatpak", "run", FLATPAK_SERVER_ID])
+
+    def _launch_client(self, widget):
+        if shutil.which("jellyfinmediaplayer"):
+            subprocess.Popen(["jellyfinmediaplayer"])
+        elif shutil.which("flatpak"):
+            subprocess.Popen(["flatpak", "run", FLATPAK_CLIENT_ID])
+        else:
+            webbrowser.open(WEB_URL)
+
+    def _confirm_uninstall(self, widget):
+        dialog = Gtk.MessageDialog(
+            transient_for=None,
+            flags=0,
+            message_type=Gtk.MessageType.WARNING,
+            buttons=Gtk.ButtonsType.YES_NO,
+            text="Complete Jellyfin Suite Removal"
+        )
+        dialog.format_secondary_text(
+            "This will purge the Jellyfin Server, Jellyfin Media Player, and Jellyfin Tray Control from your system.\n\nAre you sure you want to proceed?"
+        )
+        response = dialog.run()
+        dialog.destroy()
+
+        if response == Gtk.ResponseType.YES:
+            cmd = ["pkexec", "sh", "-c", "systemctl stop jellyfin || true; apt-get purge -y jellyfin jellyfin-server jellyfin-web jellyfin-media-player jellyfin-tray-control || true; rm -f /etc/apt/sources.list.d/jellyfin.sources /etc/apt/keyrings/jellyfin.gpg; flatpak uninstall -y org.jellyfin.JellyfinServer com.github.iwalton3.jellyfin-media-player || true"]
+            subprocess.Popen(cmd)
+            Gtk.main_quit()
 
     def _show_about(self, widget):
         if getattr(self, "_about_dialog", None) is not None:
@@ -278,22 +566,18 @@ class JellyfinTray:
             self._about_dialog = None
         window.connect("destroy", _cleanup)
 
-        # Layer 1: Sculpted outer gold rim
         bezel = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         bezel.get_style_context().add_class("buddha-outer-bezel")
         window.add(bezel)
 
-        # Layer 2: Inset dark bezel channel
         lip = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         lip.get_style_context().add_class("buddha-bevel-lip")
         bezel.pack_start(lip, True, True, 0)
 
-        # Layer 3: Onyx main face
         face = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         face.get_style_context().add_class("buddha-main-face")
         lip.pack_start(face, True, True, 0)
 
-        # Layer 4: Inset hairline accent frame
         inner_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         inner_box.get_style_context().add_class("buddha-inner-border")
         face.pack_start(inner_box, True, True, 0)
@@ -336,8 +620,35 @@ class JellyfinTray:
 
         window.show_all()
 
-def main():
+
+def _is_backend_present():
+    if shutil.which("systemctl"):
+        res = subprocess.run(["systemctl", "status", SYSTEMD_UNIT], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if res.returncode in (0, 3):
+            return True
+    if shutil.which("flatpak"):
+        res = subprocess.run(["flatpak", "info", FLATPAK_SERVER_ID], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if res.returncode == 0:
+            return True
+    return False
+
+def start_tray():
     JellyfinTray()
+
+def main():
+    dry_run = "--test-installer" in sys.argv
+
+    screen = Gdk.Screen.get_default()
+    if screen:
+        provider = Gtk.CssProvider()
+        provider.load_from_data(APP_CSS)
+        Gtk.StyleContext.add_provider_for_screen(screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+    if dry_run or not _is_backend_present():
+        InstallerDialog(on_complete_cb=start_tray, dry_run=dry_run)
+    else:
+        start_tray()
+
     Gtk.main()
 
 if __name__ == "__main__":

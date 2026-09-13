@@ -1,4 +1,4 @@
-11d4d82cc5b1f77848c3aa44af7e76a1  usr/bin/jellyfin-tray
+23e01d13e5b1bcd3b2cf85b8daf4141c  usr/bin/jellyfin-tray
 ed6bec87f4fc89e8431878a6c3b5e600  usr/share/applications/jellyfin-tray.desktop
 33557228806bada0bcaec083c43d765b  usr/share/doc/jellyfin-tray-control/changelog.gz
 e50f45acbfacf942d1a82a2ba21bd1b2  usr/share/polkit-1/rules.d/10-jellyfin.rules
