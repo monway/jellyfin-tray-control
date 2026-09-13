@@ -1,5 +1,8 @@
 # Jellyfin Tray Control
 
+[![Build Status](https://github.com/monway/jellyfin-tray-control/actions/workflows/build-deb.yml/badge.svg)](https://github.com/monway/jellyfin-tray-control/actions/workflows/build-deb.yml)
+[![License](https://img.shields.io/github/license/monway/jellyfin-tray-control)](LICENSE)
+
 ## Visual Preview
 
 | Tray Menu Interface | About Dialog |
@@ -8,11 +11,10 @@
 
 ---
 
-
 ## Features
 
-- **Auto-Detection:** Automatically detects native systemd service (`jellyfin.service) or Flatpak container (`org.jellyfin.JellyfinServer`).
--​ **Event-Driven:** Uses GIO D-Bus signal subscriptions instead of active polling (0.0% idle CPU).
+- **Auto-Detection:** Automatically detects native systemd service (`jellyfin.service`) or Flatpak container (`org.jellyfin.JellyfinServer`).
+- **Event-Driven:** Uses GIO D-Bus signal subscriptions instead of active polling (0.0% idle CPU).
 - **Zero-Password Control:** Direct integration with systemd via PolicyKit rules without requiring passwords.
 - **Lightweight:** Minimal memory footprint (<15 MB RSS).
 - **Non-Blocking:** Responsive GTK3 / AyatanaAppIndicator interface.
@@ -36,11 +38,17 @@ sudo install -m 755 jellyfin-tray /usr/local/bin/jellyfin-tray
 sudo install -m 644 jellyfin-tray.desktop /usr/share/applications/
 ```
 
-...( Optional ) ... Enable automatic startup on desktop login:
+... ( Optional ) ... Enable automatic startup on desktop login:
 ```bash
 mkdir -p ~/.config/autostart
 cp jellyfin-tray.desktop ~/.config/autostart/
 ```
+
+## Cross-Distribution Support
+
+This tool supports multiple package formats and service types, making it compatible across various Linux distributions:
+- **Native Systemd:** Fully integrated with native systemd services on Debian/Ubuntu-based systems.
+- **Flatpak Support:** Automatically detects and controls Jellyfin Server running inside a Flatpak container (`org.jellyfin.JellyfinServer`).
 
 ## Uninstallation
 
@@ -53,12 +61,4 @@ rm -f ~/.config/autostart/jellyfin-tray.desktop
 
 ## License
 
-Copyright (C) 2026 Jesse Dylan Mahoney (何孟維)
-
-This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-
-## Disclaimer
-
-This project is an independent open-source utility and is not affiliated, associated, authorized, endorsed by, or in any way officially connected with the Jellyfin project, Jellyfin team, or any of its subsidiaries or affiliates.
+Copyright (C) 2026 Jesse Dylan Mahoney (何孟雄)
