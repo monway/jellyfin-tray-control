@@ -526,16 +526,9 @@ class JellyfinTray:
             subprocess.run(["flatpak", "kill", FLATPAK_SERVER_ID])
             subprocess.Popen(["flatpak", "run", FLATPAK_SERVER_ID])
 
-    def _launch_client(self, widget):
-        # 1. Native package executable
-        if shutil.which("jellyfinmediaplayer"):
-            subprocess.Popen(["jellyfinmediaplayer"])
-            return
-        if shutil.which("jellyfin-media-player"):
-            subprocess.Popen(["jellyfin-media-player"])
-            return
-
-        # 2. Check if Flatpak app is actually installed
+    def _is_player_installed(self):
+        if shutil.which("jellyfinmediaplayer") or shutil.which("jellyfin-media-player"):
+            return "native"
         if shutil.which("flatpak"):
             check = subprocess.run(
                 ["flatpak", "info", FLATPAK_CLIENT_ID],
@@ -543,12 +536,116 @@ class JellyfinTray:
                 stderr=subprocess.DEVNULL
             )
             if check.returncode == 0:
-                subprocess.Popen(["flatpak", "run", FLATPAK_CLIENT_ID])
-                return
+                return "flatpak"
+        return None
 
-        # 3. Clean fallback to browser Web UI
-        webbrowser.open(WEB_URL)
+    def _execute_player(self, player_type):
+        if player_type == "native":
+            binary = "jellyfinmediaplayer" if shutil.which("jellyfinmediaplayer") else "jellyfin-media-player"
+            subprocess.Popen([binary])
+        elif player_type == "flatpak":
+            subprocess.Popen(["flatpak", "run", FLATPAK_CLIENT_ID])
+        else:
+            webbrowser.open(WEB_URL)
 
+    def _show_server_stopped_warning(self, player_type):
+        dialog = Gtk.MessageDialog(
+            transient_for=None,
+            flags=0,
+            message_type=Gtk.MessageType.WARNING,
+            buttons=Gtk.ButtonsType.NONE,
+            text="Jellyfin Server is Stopped"
+        )
+        dialog.format_secondary_text(
+            "The Jellyfin Server must be running before launching Jellyfin Player.
+
+Would you like to start the server now?"
+        )
+        dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
+        dialog.add_button("Start Server & Launch", Gtk.ResponseType.OK)
+        
+        response = dialog.run()
+        dialog.destroy()
+        
+        if response == Gtk.ResponseType.OK:
+            self._start_service(None)
+            # Give server daemon a moment to register socket before launching player
+            GLib.timeout_add_seconds(2, lambda: self._execute_player(player_type) or False)
+
+    def _prompt_and_install_player(self):
+        dialog = Gtk.MessageDialog(
+            transient_for=None,
+            flags=0,
+            message_type=Gtk.MessageType.QUESTION,
+            buttons=Gtk.ButtonsType.YES_NO,
+            text="Jellyfin Player Not Found"
+        )
+        dialog.format_secondary_text(
+            "Jellyfin Player is not installed on your system.
+
+Would you like to install Jellyfin Media Player now?"
+        )
+        response = dialog.run()
+        dialog.destroy()
+
+        if response == Gtk.ResponseType.YES:
+            # Run installation in background worker thread
+            threading.Thread(target=self._run_player_install_worker, daemon=True).start()
+
+    def _run_player_install_worker(self):
+        # Choose backend based on server backend preference
+        if self.backend == "flatpak":
+            cmd = ["flatpak", "install", "-y", "flathub", FLATPAK_CLIENT_ID]
+            player_type = "flatpak"
+        else:
+            cmd = ["pkexec", "apt-get", "install", "-y", "jellyfin-media-player"]
+            player_type = "native"
+
+        res = subprocess.run(cmd)
+        if res.returncode == 0:
+            GLib.idle_add(self._on_player_install_success, player_type)
+        else:
+            GLib.idle_add(self._show_info_dialog, "Installation Failed", "Could not install Jellyfin Player. Please check package sources.")
+
+    def _show_info_dialog(self, title, msg):
+        dlg = Gtk.MessageDialog(
+            transient_for=None,
+            flags=0,
+            message_type=Gtk.MessageType.INFO,
+            buttons=Gtk.ButtonsType.OK,
+            text=title
+        )
+        dlg.format_secondary_text(msg)
+        dlg.run()
+        dlg.destroy()
+
+    def _on_player_install_success(self, player_type):
+        # Re-check server state
+        if self.backend == "systemd":
+            self._check_systemd_status()
+        elif self.backend == "flatpak":
+            self._check_flatpak_status()
+
+        if self.is_active:
+            self._execute_player(player_type)
+        else:
+            self._show_server_stopped_warning(player_type)
+
+    def _launch_client(self, widget):
+        player_type = self._is_player_installed()
+
+        # 1. Not installed: Prompt user to install
+        if not player_type:
+            self._prompt_and_install_player()
+            return
+
+        # 2. Installed, but server is off: warn user
+        if not self.is_active:
+            self._show_server_stopped_warning(player_type)
+            return
+
+        # 3. Installed and server is active: launch directly
+        self._execute_player(player_type)
     def _confirm_uninstall(self, widget):
         dialog = Gtk.MessageDialog(
             transient_for=None,
