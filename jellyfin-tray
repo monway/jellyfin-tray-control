@@ -672,17 +672,38 @@ class JellyfinTray:
                 return "flatpak"
         return None
 
+    def _ensure_player_configured(self):
+        try:
+            import json
+            conf_dir = os.path.expanduser("~/.local/share/jellyfinmediaplayer")
+            os.makedirs(conf_dir, exist_ok=True)
+            conf_file = os.path.join(conf_dir, "jellyfinmediaplayer.conf")
+            data = {}
+            if os.path.exists(conf_file):
+                try:
+                    with open(conf_file, "r") as f:
+                        data = json.load(f)
+                except Exception:
+                    data = {}
+            main_sec = data.setdefault("main", {})
+            main_sec["lastserver"] = WEB_URL
+            main_sec["servers"] = [WEB_URL]
+            with open(conf_file, "w") as f:
+                json.dump(data, f, indent=4)
+        except Exception:
+            pass
+
     def _execute_player(self, player_type):
+        self._ensure_player_configured()
         env = os.environ.copy()
         env["LC_ALL"] = "C.UTF-8"
         if player_type == "native":
             binary = "jellyfinmediaplayer" if shutil.which("jellyfinmediaplayer") else "jellyfin-media-player"
-            subprocess.Popen([binary], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env)
+            subprocess.Popen([binary, "--server", WEB_URL], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env)
         elif player_type == "flatpak":
-            subprocess.Popen(["flatpak", "run", FLATPAK_CLIENT_ID], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env)
+            subprocess.Popen(["flatpak", "run", FLATPAK_CLIENT_ID, "--server", WEB_URL], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env)
         else:
             webbrowser.open(WEB_URL)
-
     def _show_server_stopped_warning(self, player_type):
         dialog = Gtk.MessageDialog(
             transient_for=None,
