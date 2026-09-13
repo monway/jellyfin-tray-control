@@ -22,9 +22,19 @@ jobs:
       - name: Build .deb package
         run: |
           dpkg-buildpackage -us -uc -b
+          mkdir -p dist
+          mv ../*.deb dist/
 
       - name: Upload .deb artifact
         uses: actions/upload-artifact@v4
         with:
           name: deb-package
-          path: ../*.deb
+          path: dist/*.deb
+
+      - name: Create Release Asset
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.deb
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
