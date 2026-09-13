@@ -8,6 +8,10 @@ import shutil
 import subprocess
 import webbrowser
 import threading
+
+# Silence GObject runtime diagnostics
+os.environ["G_ENABLE_DIAGNOSTIC"] = "0"
+
 import gi
 
 gi.require_version("Gtk", "3.0")
@@ -19,6 +23,17 @@ except (ValueError, ImportError):
     from gi.repository import AppIndicator3 as AppIndicator
 
 from gi.repository import Gtk, Gdk, GLib, Gio
+
+# Suppress upstream C-level Ayatana deprecation notice
+try:
+    GLib.log_set_handler(
+        "libayatana-appindicator",
+        GLib.LogLevelFlags.LEVEL_WARNING,
+        lambda domain, level, message, user_data: None,
+        None
+    )
+except Exception:
+    pass
 
 FLATPAK_SERVER_ID = "org.jellyfin.JellyfinServer"
 FLATPAK_CLIENT_ID = "com.github.iwalton3.jellyfin-media-player"
@@ -141,7 +156,7 @@ class InstallerDialog(Gtk.Window):
         inner.pack_start(title, False, False, 0)
 
         chars = Gtk.Label()
-        chars.set_markup("<span size='small' alpha='85%' letter_spacing='3000' foreground='#d4af37'>伺 服 器 與 用 戶 端 安 裝</span>")
+        chars.set_markup("<span size='small' alpha='85%' letter_spacing='3000' foreground='#d4af37'>伺 服 器 與 播 放 器 安 裝</span>")
         inner.pack_start(chars, False, False, 0)
 
         sep = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
@@ -152,7 +167,7 @@ class InstallerDialog(Gtk.Window):
         notice.set_line_wrap(True)
         notice.set_justify(Gtk.Justification.CENTER)
         notice.set_markup(
-            "<span size='small' foreground='#e4e4eb'>Jellyfin Server &amp; Player were not detected.\n"
+            "<span size='small' foreground='#e4e4eb'>Jellyfin Server &amp; Jellyfin Player were not detected.\n"
             "Automatically configure the suite on your system?</span>"
         )
         inner.pack_start(notice, False, False, 2)
@@ -233,7 +248,7 @@ class InstallerDialog(Gtk.Window):
                 (0.2, "Testing environment detection..."),
                 (0.4, "Simulating repository setup..."),
                 (0.7, "Simulating Jellyfin Server &amp; Player package fetch..."),
-                (0.9, "Simulating player desktop configuration..."),
+                (0.9, "Simulating Jellyfin Player configuration..."),
                 (1.0, "Dry-run complete! Initializing tray controller...")
             ]
             for frac, msg in steps:
@@ -253,7 +268,7 @@ class InstallerDialog(Gtk.Window):
                  ["pkexec", "sh", "-c", ". /etc/os-release && echo \"Types: deb\\nURIs: https://repo.jellyfin.org/${ID}\\nSuites: ${VERSION_CODENAME}\\nComponents: main\\nArchitectures: $(dpkg --print-architecture)\\nSigned-By: /etc/apt/keyrings/jellyfin.gpg\" > /etc/apt/sources.list.d/jellyfin.sources"]),
                 (0.6, "Updating APT indices...",
                  ["pkexec", "apt-get", "update"]),
-                (0.8, "Installing Jellyfin Server & Player...",
+                (0.8, "Installing Jellyfin Server &amp; Player...",
                  ["pkexec", "apt-get", "install", "-y", "jellyfin", "jellyfin-media-player"])
             ]
             if autostart:
@@ -265,7 +280,7 @@ class InstallerDialog(Gtk.Window):
                  ["flatpak", "remote-add", "--if-not-exists", "flathub", "https://dl.flathub.org/repo/flathub.flatpakrepo"]),
                 (0.7, "Installing Jellyfin Server container...",
                  ["flatpak", "install", "-y", "flathub", FLATPAK_SERVER_ID]),
-                (0.9, "Installing Jellyfin Jellyfin Player container...",
+                (0.9, "Installing Jellyfin Player container...",
                  ["flatpak", "install", "-y", "flathub", FLATPAK_CLIENT_ID])
             ]
             if autostart:
@@ -323,9 +338,9 @@ class JellyfinTray:
         self.restart_item.connect("activate", self._restart_service)
         self.menu.append(self.restart_item)
 
-        self.player_item = Gtk.MenuItem(label="Launch Jellyfin Player")
-        self.player_item.connect("activate", self._launch_player)
-        self.menu.append(self.player_item)
+        self.client_item = Gtk.MenuItem(label="Launch Jellyfin Player")
+        self.client_item.connect("activate", self._launch_client)
+        self.menu.append(self.client_item)
 
         self.web_item = Gtk.MenuItem(label="Open Web UI")
         self.web_item.connect("activate", lambda _: webbrowser.open(WEB_URL))
@@ -511,7 +526,7 @@ class JellyfinTray:
             subprocess.run(["flatpak", "kill", FLATPAK_SERVER_ID])
             subprocess.Popen(["flatpak", "run", FLATPAK_SERVER_ID])
 
-    def _launch_player(self, widget):
+    def _launch_client(self, widget):
         if shutil.which("jellyfinmediaplayer"):
             subprocess.Popen(["jellyfinmediaplayer"])
         elif shutil.which("flatpak"):
@@ -528,7 +543,7 @@ class JellyfinTray:
             text="Complete Jellyfin Suite Removal"
         )
         dialog.format_secondary_text(
-            "This will purge the Jellyfin Server, Jellyfin Media Player, and Jellyfin Tray Control from your system.\n\nAre you sure you want to proceed?"
+            "This will purge the Jellyfin Server, Jellyfin Player, and Jellyfin Tray Control from your system.\n\nAre you sure you want to proceed?"
         )
         response = dialog.run()
         dialog.destroy()
