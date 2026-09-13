@@ -17,7 +17,7 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y debhelper devscripts dpkg-dev
+          sudo apt-get install -y debhelper devscripts dpkg-dev build-essential
 
       - name: Build .deb package
         run: |
@@ -28,11 +28,3 @@ jobs:
         with:
           name: deb-package
           path: ../*.deb
-
-      - name: Create Release Asset
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: ../*.deb
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
