@@ -7,7 +7,7 @@
 
 | Tray Menu Interface | About Dialog |
 | :---: | :---: |
-| <img src='screenshots/tray-menu.png' width='320'> | <img src='screenshots/about-dialog.png' width='320'> |
+| <img src='screenshots/tray.png' width='320'> | <img src='screenshots/about-dialog.png' width='320'> |
 
 ---
 
