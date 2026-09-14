@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    # Use v5 actions to target Node 24 and clear deprecation warnings
       - name: Checkout code
         uses: actions/checkout@v5
 
