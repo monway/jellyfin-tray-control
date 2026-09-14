@@ -7,3 +7,5 @@ override_dh_auto_install:
 	install -D -m 0644 jellyfin-tray.desktop debian/jellyfin-tray-control/usr/share/applications/jellyfin-tray.desktop
 	install -D -m 0644 jellyfin-tray.desktop debian/jellyfin-tray-control/etc/xdg/autostart/jellyfin-tray.desktop
 	install -D -m 0644 10-jellyfin.rules debian/jellyfin-tray-control/usr/share/polkit-1/rules.d/10-jellyfin.rules
+	install -D -m 0644 icons/jellyfin-tray-running.svg debian/jellyfin-tray-control/usr/share/icons/hicolor/scalable/apps/jellyfin-tray-running.svg
+	install -D -m 0644 icons/jellyfin-tray-stopped.svg debian/jellyfin-tray-control/usr/share/icons/hicolor/scalable/apps/jellyfin-tray-stopped.svg
