@@ -11,7 +11,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # Use v5 actions to target Node 24 and clear deprecation warnings
       - name: Checkout code
         uses: actions/checkout@v5
 
@@ -27,7 +26,7 @@ jobs:
           mv ../*.deb dist/
 
       - name: Upload .deb artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v4
         with:
           name: deb-package
           path: dist/*.deb
@@ -36,3 +35,4 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
+          files: dist/*.deb
