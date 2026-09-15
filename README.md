@@ -1,5 +1,9 @@
 # Jellyfin Tray Control
 
+> *"Programming is 10% elegant architecture, and 90% staring at a blinking cursor wondering why the daemon hates you today. Build it clean, keep it free, and let the code speak for itself." ~JDM*
+
+Amituofo.
+
 [![Build Status](https://github.com/monway/jellyfin-tray-control/actions/workflows/build-deb.yml/badge.svg)](https://github.com/monway/jellyfin-tray-control/actions/workflows/build-deb.yml)
 [![License](https://img.shields.io/github/license/monway/jellyfin-tray-control)](LICENSE)
 
