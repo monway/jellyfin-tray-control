@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 # ==============================================================================
 #  Jellyfin Tray Control
-#  A luxurious, zero-latency system tray utility for Jellyfin Server.
 # ==============================================================================
 
 import sys
@@ -23,25 +22,16 @@ except ValueError:
     gi.require_version('AppIndicator3', '0.1')
     from gi.repository import AppIndicator3
 
-# ==============================================================================
-#  SELF-CONTAINED AAA ASSETS (Zero external dependencies)
-# ==============================================================================
 SVG_ACTIVE = """<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-  <rect x="8" y="12" width="48" height="16" rx="2" fill="#121214" stroke="#D4AF37" stroke-width="2"/>
-  <line x1="16" y1="20" x2="36" y2="20" stroke="#D4AF37" stroke-width="2" stroke-linecap="round"/>
-  <circle cx="48" cy="20" r="4" fill="#10B981"/>
-  <rect x="8" y="36" width="48" height="16" rx="2" fill="#121214" stroke="#D4AF37" stroke-width="2"/>
-  <line x1="16" y1="44" x2="36" y2="44" stroke="#D4AF37" stroke-width="2" stroke-linecap="round"/>
-  <circle cx="48" cy="44" r="4" fill="#10B981"/>
+  <rect x="8" y="14" width="48" height="32" rx="4" fill="#121214" stroke="#D4AF37" stroke-width="2"/>
+  <rect x="12" y="18" width="40" height="24" rx="2" fill="#10B981"/>
+  <path d="M 24 46 L 40 46 L 44 54 L 20 54 Z" fill="#121214" stroke="#D4AF37" stroke-width="2"/>
 </svg>"""
 
 SVG_INACTIVE = """<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-  <rect x="8" y="12" width="48" height="16" rx="2" fill="#121214" stroke="#D4AF37" stroke-width="2"/>
-  <line x1="16" y1="20" x2="36" y2="20" stroke="#D4AF37" stroke-width="2" stroke-linecap="round"/>
-  <circle cx="48" cy="20" r="4" fill="#EF4444"/>
-  <rect x="8" y="36" width="48" height="16" rx="2" fill="#121214" stroke="#D4AF37" stroke-width="2"/>
-  <line x1="16" y1="44" x2="36" y2="44" stroke="#D4AF37" stroke-width="2" stroke-linecap="round"/>
-  <circle cx="48" cy="44" r="4" fill="#EF4444"/>
+  <rect x="8" y="14" width="48" height="32" rx="4" fill="#121214" stroke="#D4AF37" stroke-width="2"/>
+  <rect x="12" y="18" width="40" height="24" rx="2" fill="#EF4444"/>
+  <path d="M 24 46 L 40 46 L 44 54 L 20 54 Z" fill="#121214" stroke="#D4AF37" stroke-width="2"/>
 </svg>"""
 
 ICON_DIR = "/tmp/jellyfin-tray-icons"
@@ -165,11 +155,9 @@ class JellyfinTray:
         self._apply_luxury_theme()
         self.backend = SystemdBackend("jellyfin.service")
         self.about_window, self.log_window, self._action_locked = None, None, False
-        
         self.indicator = AppIndicator3.Indicator.new("jellyfin-tray", "jf-inactive", AppIndicator3.IndicatorCategory.APPLICATION_STATUS)
         self.indicator.set_icon_theme_path(ICON_DIR)
         self.indicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
-        
         self.menu = Gtk.Menu()
         self._build_widget_tree()
         self.indicator.set_menu(self.menu)
