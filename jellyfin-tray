@@ -210,7 +210,7 @@ class JellyfinTray:
         self._action_locked = False
         
         self.indicator = AppIndicator3.Indicator.new(
-            "jellyfin-tray", "media-playback-start-symbolic", 
+            "jellyfin-tray", "jellyfin-tray-stopped", 
             AppIndicator3.IndicatorCategory.APPLICATION_STATUS
         )
         self.indicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
@@ -278,9 +278,11 @@ class JellyfinTray:
     def _apply_state_to_widgets(self, is_running):
         """Directly modifies pre-existing widget properties."""
         if is_running:
+            self.indicator.set_icon_full("jellyfin-tray-running", "Jellyfin Active")
             self.item_status.set_label("● Jellyfin: Active")
             self.item_toggle.set_label("⏹ Stop Service")
         else:
+            self.indicator.set_icon_full("jellyfin-tray-stopped", "Jellyfin Inactive")
             self.item_status.set_label("○ Jellyfin: Inactive")
             self.item_toggle.set_label("▶ Start Service")
 
